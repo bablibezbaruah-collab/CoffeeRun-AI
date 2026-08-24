@@ -87,7 +87,20 @@ if st.button("☕ Find My Coffee Shop"):
     })
 
     # Predict
-    prediction = model.predict(user_input)[0]
+    matches = shops[
+    (shops["coffee"] == coffee) &
+    (shops["budget"] == budget) &
+    (shops["walkability"] == walkability)
+    ]
+
+    if matches.empty:
+        matches = shops
+
+    info = matches.sort_values("rating", ascending=False).iloc[0]
+
+    prediction = info["shop"]
+
+    match = 95
 
     # Match score
     probabilities = model.predict_proba(user_input)[0]
