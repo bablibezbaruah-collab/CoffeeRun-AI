@@ -4,6 +4,15 @@ import joblib
 import urllib.parse
 
 # -----------------------------
+# Page Settings
+# -----------------------------
+st.set_page_config(
+    page_title="CoffeeRun AI",
+    page_icon="☕",
+    layout="centered"
+)
+
+# -----------------------------
 # Load Model and Encoders
 # -----------------------------
 model = joblib.load("coffee_model.pkl")
@@ -16,20 +25,17 @@ walkability_encoder = joblib.load("walkability_encoder.pkl")
 # -----------------------------
 shops = pd.read_csv("shops.csv")
 
-# -----------------------------
-# Page Settings
-# -----------------------------
-st.set_page_config(
-    page_title="CoffeeRun AI",
-    page_icon="☕",
-    layout="centered"
-)
+# Clean column names
+shops.columns = shops.columns.str.strip().str.lower()
 
 # -----------------------------
 # Header
 # -----------------------------
 st.title("🏃☕ CoffeeRun AI")
-st.subheader("Helping runners discover the perfect coffee stop after every run.")
+
+st.subheader(
+    "Helping runners discover the perfect coffee stop after every run."
+)
 
 st.write(
     """
@@ -62,10 +68,10 @@ walkability = st.selectbox(
 
 rating = st.slider(
     "⭐ Minimum Rating",
-    4.0,
-    5.0,
-    4.5,
-    0.1
+    min_value=4.0,
+    max_value=5.0,
+    value=4.5,
+    step=0.1
 )
 
 # -----------------------------
@@ -73,104 +79,196 @@ rating = st.slider(
 # -----------------------------
 if st.button("☕ Find My Coffee Shop"):
 
-    # Encode user inputs
-    coffee_encoded = coffee_encoder.transform([coffee])[0]
-    budget_encoded = budget_encoder.transform([budget])[0]
-    walkability_encoded = walkability_encoder.transform([walkability])[0]
+    try:
+        # -----------------------------
+        # Encode User Inputs
+        # -----------------------------
+        coffee_encoded = coffee_encoder.transform([coffee])[0]
+        budget_encoded = budget_encoder.transform([budget])[0]
+        walkability_encoded = walkability_encoder.transform([walkability])[0]
 
-    # Create dataframe
-    user_input = pd.DataFrame({
-        "coffee_encoded": [coffee_encoded],
-        "budget_encoded": [budget_encoded],
-        "walkability_encoded": [walkability_encoded],
-        "rating": [rating]
-    })
+        # -----------------------------
+        # Create Model Input
+        # -----------------------------
+        user_input = pd.DataFrame({
+            "coffee_encoded": [coffee_encoded],
+            "budget_encoded": [budget_encoded],
+            "walkability_encoded": [walkability_encoded],
+            "rating": [rating]
+        })
 
-    # Predict
-    matches = shops[
-    (shops["coffee"] == coffee) &
-    (shops["budget"] == budget) &
-    (shops["walkability"] == walkability)
-    ]
+        # -----------------------------
+        # Machine Learning Prediction
+        # -----------------------------
+        prediction_encoded = model.predict(user_input)[0]
 
-    if matches.empty:
-        matches = shops
+        # Convert prediction back to coffee shop name
+        prediction = coffee_encoder.inverse_transform([prediction_encoded])[0]
 
-    info = matches.sort_values("rating", ascending=False).iloc[0]
+        # -----------------------------
+        # Match Score
+        # -----------------------------
+        probabilities = model.predict_proba(user_input)[0]
+        match = round(max(probabilities) * 100)
 
-    prediction = info["shop"]
+        # -----------------------------
+        # Find Predicted Shop
+        # -----------------------------
+        if "shop" not in shops.columns:
+            st.error(
+                "The shops.csv file must contain a column named 'shop'."
+            )
+            st.stop()
 
-    match = 95
+        shop_info = shops[
+            shops["shop"].astype(str).str.strip().str.lower()
+            == str(prediction).strip().lower()
+        ]
 
-    # Match score
-    probabilities = model.predict_proba(user_input)[0]
-    match = round(max(probabilities) * 100)
+        # -----------------------------
+        # If Exact Shop Isn't Found
+        # -----------------------------
+        if shop_info.empty:
 
-    # Find shop info
-    shop_info = shops[shops["shop"] == prediction]
+            # Try matching using the prediction as a string
+            possible_matches = shops[
+                shops["shop"].astype(str).str.contains(
+                    str(prediction),
+                    case=False,
+                    na=False
+                )
+            ]
 
-    # Celebration
-    st.balloons()
+            if not possible_matches.empty:
+                shop_info = possible_matches
 
-    st.success(f"🏆 CoffeeRun AI recommends **{prediction}**!")
+        # -----------------------------
+        # Celebration
+        # -----------------------------
+        st.balloons()
 
-    st.metric("🤖 AI Match Score", f"{match}%")
+        st.success(
+            f"🏆 CoffeeRun AI recommends **{prediction}**!"
+        )
 
-    # Explanation
-    st.markdown("## 🤖 Why this recommendation")
+        st.metric(
+            "🤖 AI Match Score",
+            f"{match}%"
+        )
 
-    st.write(f"""
-Our Decision Tree Machine Learning model analyzed:
+        # -----------------------------
+        # Explanation
+        # -----------------------------
+        st.markdown("## 🤖 Why this recommendation")
+
+        st.write(
+            f"""
+Our Decision Tree Machine Learning model analyzed your preferences:
 
 - ☕ Coffee Preference: **{coffee}**
 - 💰 Budget: **{budget}**
 - 🚶 Walkability: **{walkability}**
 - ⭐ Minimum Rating: **{rating}**
 
-Based on patterns learned from the training data, **{prediction}** was determined to be the best overall match.
-""")
+Based on patterns learned from the training data,
+**{prediction}** was determined to be the best match.
+"""
+        )
 
-    # Google Maps button
-    google_link = (
-        "https://www.google.com/maps/search/"
-        + urllib.parse.quote(prediction)
-    )
+        # -----------------------------
+        # Google Maps
+        # -----------------------------
+        google_link = (
+            "https://www.google.com/maps/search/"
+            + urllib.parse.quote(str(prediction))
+        )
 
-    st.link_button("📍 View on Google Maps", google_link)
+        st.link_button(
+            "📍 View on Google Maps",
+            google_link
+        )
 
-    # Shop Details
-    if not shop_info.empty:
+        # -----------------------------
+        # Shop Details
+        # -----------------------------
+        if not shop_info.empty:
 
-        info = shop_info.iloc[0]
+            info = shop_info.iloc[0]
 
+            st.markdown("---")
+
+            st.header(f"☕ {info['shop']}")
+
+            # Rating
+            if "rating" in shops.columns:
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.metric(
+                        "⭐ Rating",
+                        f"{info['rating']}"
+                    )
+
+                # Price
+                if "price" in shops.columns:
+                    with col2:
+                        st.metric(
+                            "💰 Price",
+                            f"{info['price']}"
+                        )
+
+                elif "budget" in shops.columns:
+                    with col2:
+                        st.metric(
+                            "💰 Price",
+                            f"{info['budget']}"
+                        )
+
+            # Review
+            if "review" in shops.columns:
+
+                st.markdown("### Why you'll like it")
+
+                st.write(info["review"])
+
+        else:
+
+            st.warning(
+                "The model predicted this coffee shop, but additional "
+                "information for the shop could not be found in shops.csv."
+            )
+
+        # -----------------------------
+        # Model Information
+        # -----------------------------
         st.markdown("---")
 
-        st.header(f"☕ {info['shop']}")
+        st.info(
+            "Recommendation generated using a Decision Tree "
+            "Machine Learning model."
+        )
 
-        col1, col2 = st.columns(2)
+    except Exception as e:
 
-        with col1:
-            st.metric("⭐ Rating", info["rating"])
+        st.error(
+            "Something went wrong while generating the recommendation."
+        )
 
-        with col2:
-            st.metric("💰 Price", info["price"])
+        st.write(
+            "Please make sure your model, encoders, and shops.csv "
+            "file are correctly configured."
+        )
 
-        st.markdown("### Why you'll like it")
-
-        st.write(info["review"])
-
-    st.markdown("---")
-
-    st.info(
-        "Recommendation generated using a Decision Tree Machine Learning model."
-    )
+        st.exception(e)
 
 # -----------------------------
 # Footer
 # -----------------------------
 st.markdown("---")
 
-st.caption("""
+st.caption(
+    """
 CoffeeRun AI
 
 Graduate Machine Learning Project
@@ -186,4 +284,5 @@ Built using:
 • Decision Tree Classifier
 
 Prototype dataset created for educational purposes.
-""")
+"""
+)
