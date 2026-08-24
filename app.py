@@ -100,10 +100,11 @@ if st.button("☕ Find My Coffee Shop"):
         # -----------------------------
         # Machine Learning Prediction
         # -----------------------------
-        prediction_encoded = model.predict(user_input)[0]
+        # The model already returns the coffee shop name.
+        prediction = model.predict(user_input)[0]
 
-        # Convert prediction back to coffee shop name
-        prediction = coffee_encoder.inverse_transform([prediction_encoded])[0]
+        # Make sure prediction is a normal string
+        prediction = str(prediction)
 
         # -----------------------------
         # Match Score
@@ -112,35 +113,18 @@ if st.button("☕ Find My Coffee Shop"):
         match = round(max(probabilities) * 100)
 
         # -----------------------------
-        # Find Predicted Shop
+        # Find Shop Information
         # -----------------------------
         if "shop" not in shops.columns:
             st.error(
-                "The shops.csv file must contain a column named 'shop'."
+                "Your shops.csv file must contain a column named 'shop'."
             )
             st.stop()
 
         shop_info = shops[
             shops["shop"].astype(str).str.strip().str.lower()
-            == str(prediction).strip().lower()
+            == prediction.strip().lower()
         ]
-
-        # -----------------------------
-        # If Exact Shop Isn't Found
-        # -----------------------------
-        if shop_info.empty:
-
-            # Try matching using the prediction as a string
-            possible_matches = shops[
-                shops["shop"].astype(str).str.contains(
-                    str(prediction),
-                    case=False,
-                    na=False
-                )
-            ]
-
-            if not possible_matches.empty:
-                shop_info = possible_matches
 
         # -----------------------------
         # Celebration
@@ -171,7 +155,7 @@ Our Decision Tree Machine Learning model analyzed your preferences:
 - ⭐ Minimum Rating: **{rating}**
 
 Based on patterns learned from the training data,
-**{prediction}** was determined to be the best match.
+**{prediction}** was determined to be the best overall match.
 """
         )
 
@@ -180,7 +164,7 @@ Based on patterns learned from the training data,
         # -----------------------------
         google_link = (
             "https://www.google.com/maps/search/"
-            + urllib.parse.quote(str(prediction))
+            + urllib.parse.quote(prediction)
         )
 
         st.link_button(
@@ -199,33 +183,28 @@ Based on patterns learned from the training data,
 
             st.header(f"☕ {info['shop']}")
 
-            # Rating
-            if "rating" in shops.columns:
+            col1, col2 = st.columns(2)
 
-                col1, col2 = st.columns(2)
-
-                with col1:
+            with col1:
+                if "rating" in shops.columns:
                     st.metric(
                         "⭐ Rating",
-                        f"{info['rating']}"
+                        info["rating"]
                     )
 
-                # Price
+            with col2:
                 if "price" in shops.columns:
-                    with col2:
-                        st.metric(
-                            "💰 Price",
-                            f"{info['price']}"
-                        )
+                    st.metric(
+                        "💰 Price",
+                        info["price"]
+                    )
 
                 elif "budget" in shops.columns:
-                    with col2:
-                        st.metric(
-                            "💰 Price",
-                            f"{info['budget']}"
-                        )
+                    st.metric(
+                        "💰 Price",
+                        info["budget"]
+                    )
 
-            # Review
             if "review" in shops.columns:
 
                 st.markdown("### Why you'll like it")
@@ -235,8 +214,8 @@ Based on patterns learned from the training data,
         else:
 
             st.warning(
-                "The model predicted this coffee shop, but additional "
-                "information for the shop could not be found in shops.csv."
+                f"We couldn't find additional information for "
+                f"**{prediction}** in shops.csv."
             )
 
         # -----------------------------
@@ -255,13 +234,7 @@ Based on patterns learned from the training data,
             "Something went wrong while generating the recommendation."
         )
 
-        st.write(
-            "Please make sure your model, encoders, and shops.csv "
-            "file are correctly configured."
-        )
-
         st.exception(e)
-
 # -----------------------------
 # Footer
 # -----------------------------
