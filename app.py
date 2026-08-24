@@ -4,7 +4,7 @@ import joblib
 import urllib.parse
 
 # -----------------------------
-# Load the trained model
+# Load Model and Encoders
 # -----------------------------
 model = joblib.load("coffee_model.pkl")
 coffee_encoder = joblib.load("coffee_encoder.pkl")
@@ -12,7 +12,7 @@ budget_encoder = joblib.load("budget_encoder.pkl")
 walkability_encoder = joblib.load("walkability_encoder.pkl")
 
 # -----------------------------
-# Load coffee shop information
+# Load Shop Information
 # -----------------------------
 shops = pd.read_csv("shops.csv")
 
@@ -29,15 +29,15 @@ st.set_page_config(
 # Header
 # -----------------------------
 st.title("🏃☕ CoffeeRun AI")
-st.markdown(
-    "### Helping runners discover the perfect coffee stop after every run."
-)
+st.subheader("Helping runners discover the perfect coffee stop after every run.")
 
 st.write(
     """
-    Answer a few questions below and let our Machine Learning model
-    recommend the best coffee shop based on your preferences.
-    """
+Welcome to CoffeeRun AI!
+
+Enter your coffee preferences below and our Machine Learning model
+will recommend the best coffee shop for you.
+"""
 )
 
 st.divider()
@@ -73,12 +73,12 @@ rating = st.slider(
 # -----------------------------
 if st.button("☕ Find My Coffee Shop"):
 
-    # Encode the inputs
+    # Encode user inputs
     coffee_encoded = coffee_encoder.transform([coffee])[0]
     budget_encoded = budget_encoder.transform([budget])[0]
     walkability_encoded = walkability_encoder.transform([walkability])[0]
 
-    # Create dataframe for prediction
+    # Create dataframe
     user_input = pd.DataFrame({
         "coffee_encoded": [coffee_encoded],
         "budget_encoded": [budget_encoded],
@@ -86,39 +86,46 @@ if st.button("☕ Find My Coffee Shop"):
         "rating": [rating]
     })
 
-    # Predict shop
+    # Predict
     prediction = model.predict(user_input)[0]
 
-    # Calculate AI Match Score
+    # Match score
     probabilities = model.predict_proba(user_input)[0]
     match = round(max(probabilities) * 100)
 
-    # Look up shop details
+    # Find shop info
     shop_info = shops[shops["shop"] == prediction]
 
+    # Celebration
     st.balloons()
 
-    st.success(f"🏆 We recommend **{prediction}**!")
+    st.success(f"🏆 CoffeeRun AI recommends **{prediction}**!")
 
     st.metric("🤖 AI Match Score", f"{match}%")
 
+    # Explanation
     st.markdown("## 🤖 Why this recommendation")
 
-    st.write(
-    f"""
-Our Decision Tree Machine Learning model analyzed your preferences and found that
-**{prediction}** was the closest match based on:
+    st.write(f"""
+Our Decision Tree Machine Learning model analyzed:
 
-    ☕ Coffee Preference: **{coffee}**
+- ☕ Coffee Preference: **{coffee}**
+- 💰 Budget: **{budget}**
+- 🚶 Walkability: **{walkability}**
+- ⭐ Minimum Rating: **{rating}**
 
-    💰 Budget: **{budget}**
+Based on patterns learned from the training data, **{prediction}** was determined to be the best overall match.
+""")
 
-    🚶 Walkability: **{walkability}**
-
-    ⭐ Minimum Rating: **{rating}**
-    """
+    # Google Maps button
+    google_link = (
+        "https://www.google.com/maps/search/"
+        + urllib.parse.quote(prediction)
     )
 
+    st.link_button("📍 View on Google Maps", google_link)
+
+    # Shop Details
     if not shop_info.empty:
 
         info = shop_info.iloc[0]
@@ -138,26 +145,32 @@ Our Decision Tree Machine Learning model analyzed your preferences and found tha
         st.markdown("### Why you'll like it")
 
         st.write(info["review"])
-        
-        google_link = "https://www.google.com/maps/search/" + urllib.parse.quote(prediction)
 
-        st.link_button("📍 View on Google Maps", google_link)
+    st.markdown("---")
 
-        st.markdown("---")
-
-        st.info(
+    st.info(
         "Recommendation generated using a Decision Tree Machine Learning model."
-        )
+    )
 
 # -----------------------------
 # Footer
 # -----------------------------
 st.markdown("---")
 
-st.caption(
-    """
-CoffeeRun AI was developed as a prototype recommendation system using
-a Decision Tree Machine Learning model trained on a demonstration dataset.
-Recommendations are intended for educational purposes.
-"""
-)
+st.caption("""
+CoffeeRun AI
+
+Graduate Machine Learning Project
+
+Built using:
+
+• Python
+
+• Streamlit
+
+• scikit-learn
+
+• Decision Tree Classifier
+
+Prototype dataset created for educational purposes.
+""")
