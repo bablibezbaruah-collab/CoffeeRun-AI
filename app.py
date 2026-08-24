@@ -1,6 +1,11 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import urllib.parse
+
+google_link = "https://www.google.com/maps/search/" + urllib.parse.quote(prediction)
+
+st.link_button("📍 View on Google Maps", google_link)
 
 # -----------------------------
 # Load the trained model
@@ -85,25 +90,48 @@ if st.button("☕ Find My Coffee Shop"):
         "rating": [rating]
     })
 
-    # Predict shop
-    prediction = model.predict(user_input)[0]
+# Predict shop
+prediction = model.predict(user_input)[0]
+
+# Calculate AI Match Score
+probabilities = model.predict_proba(user_input)[0]
+match = round(max(probabilities) * 100)
 
     # Look up shop details
     shop_info = shops[shops["shop"] == prediction]
 
-    st.balloons()
+st.balloons()
 
-    st.success(f"🏆 Our AI recommends: **{prediction}**")
+st.success(f"🏆 We recommend **{prediction}**!")
+
+st.metric("🤖 AI Match Score", f"{match}%")
+
+st.markdown("## 🤖 Why this recommendation")
+
+st.write(
+    f"""
+Our Decision Tree Machine Learning model analyzed your preferences and found that
+**{prediction}** was the closest match based on:
+
+☕ Coffee Preference: **{coffee}**
+
+💰 Budget: **{budget}**
+
+🚶 Walkability: **{walkability}**
+
+⭐ Minimum Rating: **{rating}**
+"""
+)
 
     if not shop_info.empty:
 
         info = shop_info.iloc[0]
 
-        st.markdown("---")
+st.markdown("---")
 
-        st.subheader(info["shop"])
+st.header(f"☕ {info['shop']}")
 
-        col1, col2 = st.columns(2)
+col1, col2 = st.columns(2)
 
         with col1:
             st.metric("⭐ Rating", info["rating"])
