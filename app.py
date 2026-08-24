@@ -27,8 +27,10 @@ st.set_page_config(
 # -----------------------------
 # Header
 # -----------------------------
-st.title("☕ CoffeeRun AI")
-st.markdown("### Find your perfect post-run coffee shop!")
+st.title("🏃☕ CoffeeRun AI")
+st.markdown(
+    "### Helping runners discover the perfect coffee stop after every run."
+)
 
 st.write(
     """
@@ -89,7 +91,9 @@ if st.button("☕ Find My Coffee Shop"):
     # Look up shop details
     shop_info = shops[shops["shop"] == prediction]
 
-    st.success(f"🏆 We recommend **{prediction}**!")
+    st.balloons()
+
+    st.success(f"🏆 Our AI recommends: **{prediction}**")
 
     if not shop_info.empty:
 
@@ -123,5 +127,9 @@ if st.button("☕ Find My Coffee Shop"):
 st.markdown("---")
 
 st.caption(
-    "CoffeeRun AI | Graduate Machine Learning Project"
+    """
+CoffeeRun AI was developed as a prototype recommendation system using
+a Decision Tree Machine Learning model trained on a demonstration dataset.
+Recommendations are intended for educational purposes.
+"""
 )
